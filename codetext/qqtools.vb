@@ -1,8 +1,8 @@
 /*
  * @author onelong
  * @github 
- * @time 2016.11.14
- * @version v0.1.0
+ * @time 2016.11.25
+ * @version v0.2.0s
  * @compliant 安卓QQv6.5.5 
  */
 
@@ -46,11 +46,12 @@ Function init()
     // 启动相对应的功能
     // 0 赞附近的人
     // 1 回赞
+    // 2 厘米秀
     Select Case startAction
     Case 0
         thumbUpNearby 
     Case 1
-        backToPraise
+        backToPraise 
     End Select
     
 End Function
@@ -106,7 +107,9 @@ Function thumbUpNearby()
         	
             // 寻找下一条分隔线
             FindMultiColor 0, y1 + 1, 320, screenY, "E0DFDE-50000", "160|0|E0DFDE-50000,315|0|E0DFDE-50000", 0, 1, x2, y2
-    	
+    		
+            TracePrint y1
+            TracePrint y2
             // 如果两条线之间距离为172，则存在一个名片
             If y2 - y1 = 172 Then 
 
@@ -129,8 +132,11 @@ Function thumbUpNearby()
                 	
                 End If
                 
-              
                 //  将第二条分隔线y2复制给y1
+                y1 = y2
+                
+                // 如果名片间距为180则存在一个主播
+            ElseIf y1 - y2 = 180 Then
                 y1 = y2
             End If
             
@@ -225,29 +231,67 @@ End Function
  */
 Function startThumbUpNearby()
 
-    // 休息 0.5秒
-    Delay 500
+    // 休息 0.2秒
+    Delay 200
 	
     Dim x,y
     x = screenX - 40
-    y = 700
+    // 陌生人的大图高度会根据屏幕的宽度而改变
+    // 屏宽720，该区域高度为720+50，屏宽900，该区域高度为900+50（已经验证测试）
+    // 点赞框底部据大图区域底部为30
+    // 由于部分手机状态栏透明导致qq整体会上移50,点赞图标至大图底部以内仍然有效，应对位置做出适当调整
+    // 区域高度距点赞边框30，上移后点击有效范围最下部为screenX+50-50，原点赞起始位置为screenX+50-30-47，整理区间(screenX,screenX-22)
+    // 最后y取screenX-11
+    y = screenX - 11
+   
+    // 是否可有点赞标志
+    If hadTouchImg() < 0 Then 
+    	Exit Function
+    End If	
     
     // 循环点赞10次
     For 10
     
-        // 休息0.3秒
-        Delay 300
-        
-        // 由于部分手机状态栏透明导致qq整体会上移50,点赞图标范围下方50pi以内仍然有效，应对位置做出适当调整
-        // 区域高度距点赞边框30，上移后点击有效范围最底部比原点赞边框底部高出20，点赞边框高度为54，因此点赞位置距标准点赞边框底部上调35
-        // 点击赞的位置
-        onclick(x,y)
+        // 休息0.15秒
+        Delay 150
+        onclick(x, y)
     Next
     
-    // 休息0.5s
-    Delay 500
+    // 休息0.15s
+    Delay 150
     
 End Function
+
+/*
+ * @func 是否有点赞的图标
+ * @return -1/1 没有/有
+ */
+ Function hadTouchImg
+    // 定义区间
+    Dim y1,y2
+    Dim x1,x2
+    // y1 = screenX + 50 - 50 - 30 - 47
+    y1 = screenX -77
+    // y2 = screenX + 50 - 30
+    y2 = screenX + 20
+    x1 = screenX - 170
+    x2 = screenX - 20
+	
+	// 判断赞标志是否存在
+    Dim fx,fy
+    FindMultiColor x1, y1, x2, y2, "FEFEFE-50000", "6|0|FEFEFE-50000,16|13|FEFEFE-50000", 0, 0.9, fx, fy
+    TracePrint fx
+    If fx < 0 Then 
+        FindMultiColor x1, y1, x2, y2, "EFAF00-50000", "6|0|EFAF00-50000,16|13|EFAF00-50000", 0, 0.9, fx, fy
+        If fx < 0 Then 
+        	// 找不到点赞标志返回-1
+            hadTouchImg = -1
+        End If
+    End If
+    // 找到点赞标志返回 1
+    hadTouchImg = 1
+ End Function
+ 
 
 /*
  * @func 封装点击
@@ -259,8 +303,8 @@ Function onclick(x, y)
     // 按下
     TouchDown x, y, 0
 	
-    // 休息0.3s
-    Delay 300
+    // 休息0.1s
+    Delay 100
 	
     // 抬起
     TouchUp 0
@@ -352,15 +396,15 @@ Function backToPraise
            
         Wend
         
-        // 休息1s
-        Delay 1000
+        // 休息0.5s
+        Delay 500
     	
         TracePrint "y1"&y1
         // 翻屏滚动
         Swipe 200, y1 - 50, 200, baseY + 76 - 10, 3000
     	
-        // 休息1.5s
-        Delay 1500
+        // 休息1s
+        Delay 1000
     	
     Wend
 
@@ -369,7 +413,6 @@ End Function
 /*
  * @func 点击回赞
  * @param [endY] {int} 名片底部y坐标
- * @note 
  */
 Function startBackToPraise(endY)
 	
@@ -386,16 +429,16 @@ Function startBackToPraise(endY)
         Exit Function
     End If
 	
-    // 休息0.5s
-    Delay 500
+    // 休息0.15s
+    Delay 150
 	
     // 循环点击10次
     For 10
 	
         onclick x, y
 		
-        // 休息0.3s
-        Delay 300		
+        // 休息0.1s
+        Delay 100	
     Next
 	
 End Function
