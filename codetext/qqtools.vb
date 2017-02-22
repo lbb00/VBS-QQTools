@@ -1,9 +1,9 @@
 /*
  * @author onelong
  * @github 
- * @time 2016.11.25
- * @version v0.2.0s
- * @compliant 安卓QQv6.5.5 
+ * @time 2017.2.22
+ * @version v0.3.0s
+ * @compliant 安卓QQv6.6.6
  */
 
 
@@ -37,11 +37,11 @@ Function init()
     
     // 获取启动功能
     // startAction = 1
-    startAction = Int(ReadUIConfig("action", 0))
+    startAction = Int(ReadUIConfig("action"))
     
     // 获取点赞数量
     // times = 20
-    times = int(ReadUIConfig("times",20))
+    times = int(ReadUIConfig("times"))
     
     // 启动相对应的功能
     // 0 赞附近的人
@@ -60,14 +60,12 @@ End Function
  * @func 赞附近的人
  */
 Function thumbUpNearby()
-	
-    // 基线初始化为-1，寻找基线用到的3个点
-    Dim blueY = -1,baseY1,baseY2,baseY3
-    baseY1 = 229
-    baseY2 = 223
-    baseY3 = 230
-    If CmpColorEx("0|" & baseY1 & "|E0A500-50000,0|" & baseY2 & "|FFFFFF-10000,0|" & baseY3 & "|FFFFFF-10000", 1) = 1 Then blueY = baseY1
-    TracePrint blueY
+
+    Dim blueY   
+    If CmpColorEx("31|172|D3D3D3,32|172|E0A500,147|172|E0A500,148|172|D3D3D3",0.9) = 1
+        TracePrint "位置正确"
+        blueY = 172
+    End If
     
     // 寻找基线
     Dim x1,y1,x2,y2
@@ -80,45 +78,45 @@ Function thumbUpNearby()
     
     // 开始进行第1-第N屏操作
     While isNextScreen = 1
-    	
+        
         // 每屏开始时设置y1为blueY
         y1 = blueY
-    	
+        
         // 寻找本屏第一条分片分隔线
-        FindMultiColor 0, y1 + 1, 320, screenY, "E0DFDE-50000", "160|0|E0DFDE-50000,315|0|E0DFDE-50000", 0, 1, x1, y1
-    	
+        FindMultiColor 0, y1 + 1, 300, screenY,"E5E5E4","72|0|E5E5E4,147|0|E5E5E4",0,1, x1, y1
+        
         // 初始化y2为y1+1
         y2 = y1 +1
-    	
+        
         TracePrint "next"
         // 开始进行找下一个名片的操作
-    	
+        
         While True
-        	
+            
             TracePrint "carryon"
         
             // 如果操作数量达到了
             If count = times Then 
-        		
+                
                 //退出
                 Exit Function
-        		
+                
             End If
-        	
+            
             // 寻找下一条分隔线
-            FindMultiColor 0, y1 + 1, 320, screenY, "E0DFDE-50000", "160|0|E0DFDE-50000,315|0|E0DFDE-50000", 0, 1, x2, y2
-    		
+            FindMultiColor 0, y1+1 , 300, screenY,"E5E5E4","72|0|E5E5E4,147|0|E5E5E4", 0, 1, x2, y2
+            
             TracePrint y1
             TracePrint y2
-            // 如果两条线之间距离为172，则存在一个名片
-            If y2 - y1 = 172 Then 
+            // 如果两条线之间距离为157,或大于157（附近人自己名片下的第一个名片），则存在一个名片或主播，广告为150
+            If y2 - y1 >= 157 Then 
 
-                // 判断是否是广告，不是广告则进一步操作
+                // 判断是否是主播，不是主播则进一步操作
                 If isAd(y1) = -1 Then 
-                 	
+                    
                     // 进入名片并点赞
                     intoNearbyCard(y2)
-                	
+                    
                     // 计数器加1
                     count = count + 1
                     
@@ -128,22 +126,19 @@ Function thumbUpNearby()
                     // 休息1s
                     Delay 1000
                 Else 
-                    TracePrint "广告"
-                	
+                    TracePrint "主播"
                 End If
-                
-                //  将第二条分隔线y2复制给y1
-                y1 = y2
-                
-                // 如果名片间距为180则存在一个主播
-            ElseIf y1 - y2 = 180 Then
-                y1 = y2
             End If
             
+            
+
             // 如果找不到下一条线，则进行操作结束
             If y2 = -1 Then 
                 TracePrint "exti carryon"
                 Exit While
+            Else 
+                //  将第二条分隔线y2复制给y1
+                y1 = y2
             End If
             
             
@@ -151,13 +146,13 @@ Function thumbUpNearby()
         
         // 休息1s
         Delay 1000
-    	
+        
         // 翻屏滚动
         Swipe 200, y1 - 50, 200, blueY - 10, 2500
-    	
+        
         // 休息3s
         Delay 3000
-    	
+        
     Wend
     
     // 休息1秒
@@ -172,12 +167,12 @@ Function intoNearbyCard(endY)
 
     // 点击名片底线上方50的地方
     onclick(100, endY - 50)
-	
+    
     // 点击后休息2s
     Delay 2000
-	
+    
     // 循环判断是否成功加载附近的人名片
-    While isIntoNearbyCard = -1
+    While isIntoNearbyCard() = -1
         // 如果没有加载成功，则等待1s后再次判断
         Delay 1000
     Wend
@@ -187,30 +182,21 @@ Function intoNearbyCard(endY)
 End Function
 
 /*
- * @func 判断是否是广告\主播
+ * @func 判断是否是主播
  * @param [startY] {int} 名片顶部基线y坐标
- * @return {int} 1或-1,1为是广告，-1为不是广告
+ * @return {int} 1或-1,1为是主播，-1为不是主播
  */
 Function isAd(startY)
     Dim x ,y
-	
+    
     // 寻找是否有主播标志
-    FindColor 585, startY + 43, 696, startY + 67, "9DD210-101010", 0, 0.9, x, y
+    FindColor ScreenX-103, startY + 80, ScreenX-20, startY + 85, "9AD008-101010", 0, 0.9, x, y
     // 如果有主播标志返回1，结束函数
     If x > -1 and y > -1 Then 
         isAd = 1
         Exit Function
     End If
-	
-    // 寻找是否有广告标志
-    FindColor 196, startY + 74, 249, startY + 106, "7F7EFF-101010", 0, 0.9, x, y
-    // 如果有广告标志返回1，结束函数
-    If x > -1 and y > -1 Then 
-        isAd = 1
-        Exit Function
-    End If
-	
-    // 如果不是广告也不是主播返回-1
+    
     isAd = -1
 End Function
 
@@ -218,8 +204,8 @@ End Function
  * @func 是否进入附近的人名片
  * @return {int} 1进入，-1没有进入
  */
-Function isIntoNearbyCard()
-    If CmpColorEx("490|1200|F2B91E-101010",0.9) = 1 Then
+Function isIntoNearbyCard
+    If CmpColorEx("490|1200|F2B91E-101010",1) = 1 Then
         isIntoNearbyCard = 1
     Else
         isIntoNearbyCard = -1
@@ -233,66 +219,38 @@ Function startThumbUpNearby()
 
     // 休息 0.2秒
     Delay 200
-	
+    
     Dim x,y
-    x = screenX - 40
-    // 陌生人的大图高度会根据屏幕的宽度而改变
-    // 屏宽720，该区域高度为720+50，屏宽900，该区域高度为900+50（已经验证测试）
-    // 点赞框底部据大图区域底部为30
-    // 由于部分手机状态栏透明导致qq整体会上移50,点赞图标至大图底部以内仍然有效，应对位置做出适当调整
-    // 区域高度距点赞边框30，上移后点击有效范围最下部为screenX+50-50，原点赞起始位置为screenX+50-30-47，整理区间(screenX,screenX-22)
-    // 最后y取screenX-11
-    y = screenX - 11
-   
-    // 是否可有点赞标志
-    If hadTouchImg() < 0 Then 
-    	Exit Function
-    End If	
     
-    // 循环点赞10次
-    For 10
-    
-        // 休息0.15秒
-        Delay 150
-        onclick(x, y)
-    Next
+    //寻找点赞图标区域为648，634，668，655，y轴底部加50px
+    //判断是否存在点赞图标
+    FindMultiColor 648, 634, 668, 705,"FFFFFF","13|21|FFFFFF,20|21|FFFFFF",0,0.9,x,y
+    If x > -1 And y > -1 Then 
+        If CmpColorEx(x+2&"|"&y&"|FFFFFF",1) = 1 Then
+            TracePrint x
+            TracePrint y
+            Exit Function
+        End If    
+    Else 
+        TracePrint x
+        TracePrint y
+        Exit Function
+    End If
     
     // 休息0.15s
     Delay 150
     
+    // 循环点击10次
+    For 10
+    
+        onclick x, y
+        
+        // 休息0.1s
+        Delay 100   
+    Next
+    
 End Function
-
-/*
- * @func 是否有点赞的图标
- * @return -1/1 没有/有
- */
- Function hadTouchImg
-    // 定义区间
-    Dim y1,y2
-    Dim x1,x2
-    // y1 = screenX + 50 - 50 - 30 - 47
-    y1 = screenX -77
-    // y2 = screenX + 50 - 30
-    y2 = screenX + 20
-    x1 = screenX - 170
-    x2 = screenX - 20
-	
-	// 判断赞标志是否存在
-    Dim fx,fy
-    FindMultiColor x1, y1, x2, y2, "FEFEFE-50000", "6|0|FEFEFE-50000,16|13|FEFEFE-50000", 0, 0.9, fx, fy
-    TracePrint fx
-    If fx < 0 Then 
-        FindMultiColor x1, y1, x2, y2, "EFAF00-50000", "6|0|EFAF00-50000,16|13|EFAF00-50000", 0, 0.9, fx, fy
-        If fx < 0 Then 
-        	// 找不到点赞标志返回-1
-            hadTouchImg = -1
-        End If
-    End If
-    // 找到点赞标志返回 1
-    hadTouchImg = 1
- End Function
  
-
 /*
  * @func 封装点击
  * @param [x] {int} x坐标
@@ -302,13 +260,13 @@ Function onclick(x, y)
 
     // 按下
     TouchDown x, y, 0
-	
+    
     // 休息0.1s
     Delay 100
-	
+    
     // 抬起
     TouchUp 0
-	
+    
 End Function
 
 
@@ -317,18 +275,17 @@ End Function
  * @param  
  */
 Function backToPraise
-		
-    // 基线初始化为-1，寻找基线用到的3个点
-    Dim blueY = -1,baseY1,baseY2,baseY3
-    baseY1 = 229
-    baseY2 = 223
-    baseY3 = 230
-    If CmpColorEx("0|" & baseY1 & "|E0A500-50000,0|" & baseY2 & "|FFFFFF-10000,0|" & baseY3 & "|FBF9F9-10000", 1) = 1 Then blueY = baseY1
+    Dim blueY
+    Dim fx,fy
+    FindMultiColor 181,66,298,screenY,"D3D3D3","1|0|E0A500,116|0|E0A500,117|0|D3D3D3",0,1,fx,fy
+    If fx > -1 And fy > -1 Then
+        blueY = fy
+    Else 
+        Exit Function
+    End If
+
     
-    // 基线下方有个灰条，所以基线为：
-    Dim baseY = blueY + 76
-    
-    TracePrint baseY
+    TracePrint blueY
     
     // 寻找基线
     Dim x1,y1,x2,y2
@@ -341,43 +298,41 @@ Function backToPraise
     
     // 开始进行第1-第N屏操作
     While isNextScreen = 1
-    	
-        // 每屏开始时设置y1为baseY
-        y1 = baseY
-    	
-        // 本屏第一条名片分隔线为baseY
-        y1 = baseY
-    	
+        
+        // 每屏开始时设置y1为blueY
+        y1 = blueY
+
+        
         TracePrint "next"
         // 开始进行找下一个名片的操作
-    	
+        
         While True
-        	
+            
             TracePrint "carryon"
         
             // 如果操作数量达到了
             If count = times Then 
-        		
+                
                 // 退出
                 Exit Function
-        		
+                
             End If
-        	
+            
             // 寻找下一条分隔线
-            FindMultiColor 0, y1 + 1, 320, screenY, "E0DFDE-50000", "160|0|E0DFDE-50000,315|0|E0DFDE-50000", 0, 1, x2, y2
-    		
+            FindMultiColor 0, y1 + 1, 150, screenY, "E5E5E4", "65|0|E5E5E4,143|0|E5E5E4", 0, 1, x2, y2
+            TracePrint y2
+            
             // 如果没找到下一条分隔线，本屏循环结束
             If y2 = -1 Then 
-            	
+                
                 // 本屏循环结束
                 Exit While
             
-                // 如果下一条分隔线与上一条分隔线间距大于或等于172，则存在一个名片
-                // 名片上下分隔线之间为172，但有些名片上面有个日期的分栏，多出距离为76左右
-            ElseIf y2 - y1 >= 172 Then
-            	
+                // 如果下一条分隔线与上一条分隔线间距等于144，则存在一个名片
+            ElseIf y2 - y1 = 144 Then
+                
                 // 开始进行对该名片回赞
-                startBackToPraise (y2)
+                startBackToPraise(y2)
                 
                 // 将第二条分隔线y2复制给y1
                 y1 = y2
@@ -398,47 +353,37 @@ Function backToPraise
         
         // 休息0.5s
         Delay 500
-    	
+        
         TracePrint "y1"&y1
         // 翻屏滚动
-        Swipe 200, y1 - 50, 200, baseY + 76 - 10, 3000
-    	
+        Swipe 200, y1 - 50, 200, blueY + 76 - 10, 3000
+        
         // 休息1s
         Delay 1000
-    	
+        
     Wend
 
 End Function
 
 /*
  * @func 点击回赞
- * @param [endY] {int} 名片底部y坐标
  */
 Function startBackToPraise(endY)
-	
-    // 确定点赞的位置
-    Dim x,y
-    x = screenX - 40
-    y = endY - 30
-	
-    // 有的人设置了陌生人不可点赞，点击时应对名片作一下判断
-    // 判断名片上是否有回赞图标,如果没有跳过对本名片点赞
-    If CmpColorEx(x & "|" & y & "|FFFFFF-101010", 0.9) = 1 Then 
-	 
-        // 跳过本名片点赞
-        Exit Function
-    End If
-	
+    
+    Dim x=screenX-40,y=endY-30
+    
+    
+    
     // 休息0.15s
     Delay 150
-	
+    
     // 循环点击10次
     For 10
-	
+    
         onclick x, y
-		
+        
         // 休息0.1s
-        Delay 100	
+        Delay 100   
     Next
-	
+    
 End Function
